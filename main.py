@@ -18,8 +18,8 @@ from selenium.webdriver.common.action_chains import ActionChains
 
 WEBSITE = "https://np.linkedin.com"
 DRIVER_PATH = '/home/raksha/Downloads/chromedriver-linux64/chromedriver'
-MAX_JOBS_TO_SCRAPE = 50
-MAX_TOTAL_JOBS = 600
+MAX_JOBS_TO_SCRAPE = 20
+MAX_TOTAL_JOBS = 100
 
 JOB_QUERIES = [
     "Python Developer",
@@ -159,10 +159,10 @@ def collect_job_links(driver, num_pages=3):
             print(f"Processing page {page}...")
 
             WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, 'ul.NNRjLAgluNYQKLYkXEJWjatvSWPZXnicjMVMeU'))
+                EC.presence_of_element_located((By.CSS_SELECTOR, 'ul.MjxmkACcgdGTRguhlkOjOWFGNScNjbqM'))
             )
 
-            jobs_container = driver.find_element(By.CSS_SELECTOR, 'ul.NNRjLAgluNYQKLYkXEJWjatvSWPZXnicjMVMeU')
+            jobs_container = driver.find_element(By.CSS_SELECTOR, 'ul.MjxmkACcgdGTRguhlkOjOWFGNScNjbqM')
 
             last_height = driver.execute_script("return arguments[0].scrollHeight", jobs_container)
             while True:
