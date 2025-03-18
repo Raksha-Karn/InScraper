@@ -22,7 +22,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 WEBSITE = "https://np.linkedin.com"
 DRIVER_PATH = '/home/raksha/Downloads/chromedriver-linux64/chromedriver'
-MAX_JOBS_TO_SCRAPE = 2
+MAX_JOBS_TO_SCRAPE = 40
 MAX_TOTAL_JOBS = 500
 
 JOB_QUERIES = [
@@ -162,9 +162,14 @@ def collect_job_links(driver, num_pages=3):
         while page <= num_pages and len(links) < MAX_JOBS_TO_SCRAPE:
             logging.info(f"Processing page {page}...")
 
-            WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, 'ul.zslYMAghXImmwmPOfcwBWohNqjlUItimevY'))
-            )
+            try:
+                WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, 'ul.zslYMAghXImmwmPOfcwBWohNqjlUItimevY'))
+                )
+                
+            except Exception as e:
+                logging.error(f"The selector for jobs container has been changed. Please update the selector in the code to run the scraper.")
+                return []
 
             jobs_container = driver.find_element(By.CSS_SELECTOR, 'ul.zslYMAghXImmwmPOfcwBWohNqjlUItimevY')
 
