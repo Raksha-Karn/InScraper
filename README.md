@@ -19,8 +19,7 @@ To set up the LinkedIn Job Scraper, follow these steps:
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/yourusername/linkedin-job-scraper.git
-   cd linkedin-job-scraper
+   git clone https://github.com/Raksha-Karn/InScraper.git
    ```
 
 2. **Create a virtual environment** (optional but recommended):
