@@ -15,7 +15,6 @@ from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from rotate_agents import rotate_user_agents
 from selenium.webdriver.common.action_chains import ActionChains
-from scraper import *
 import logging
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
