@@ -1,11 +1,7 @@
 import json
 import time
-import os
-import re
-import schedule
 import random
-from supabase_client import supabase
-from dotenv import load_dotenv
+import re
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.service import Service
@@ -13,32 +9,12 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from rotate_agents import rotate_user_agents
 from selenium.webdriver.common.action_chains import ActionChains
-from scraper import *
-
-WEBSITE = "https://np.linkedin.com"
-DRIVER_PATH = '/home/raksha/Downloads/chromedriver-linux64/chromedriver'
-MAX_JOBS_TO_SCRAPE = 2
-MAX_TOTAL_JOBS = 500
-
-JOB_QUERIES = [
-    "Python Developer",
-    "Data Scientist",
-    "Frontend Developer",
-    "Backend Developer",
-    "Full Stack Developer",
-    "DevOps Engineer",
-    "Machine Learning Engineer",
-    "Software Engineer",
-    "Data Analyst",
-    "UI/UX Designer"
-]
+from config import *
 
 used_queries = []
 
 def setup_driver():
-    load_dotenv()
     chrome_options = Options()
     user_agent = rotate_user_agents()
     chrome_options.add_argument(f'user-agent={user_agent}')
@@ -65,12 +41,12 @@ def login_to_linkedin(driver, actions):
         
         email_input = driver.find_element(By.CSS_SELECTOR, 'input[aria-label="Email or phone"]')
         email_input.click()
-        email_input.send_keys(os.getenv('EMAIL'))
+        email_input.send_keys(EMAIL)
         
         password_input = driver.find_element(By.CSS_SELECTOR, 'input[aria-label="Password"]')
         actions.move_by_offset(-100, 0).perform()
         password_input.click()
-        password_input.send_keys(os.getenv('PASSWORD'))
+        password_input.send_keys(PASSWORD)
         
         login_button = driver.find_element(By.CSS_SELECTOR, 'button[aria-label="Sign in"]')
         login_button.click()
@@ -86,15 +62,11 @@ def get_next_job_query():
     global used_queries
     
     if len(used_queries) >= len(JOB_QUERIES):
-        used_queries = []
+        used_queries.clear()
     
     available_queries = [q for q in JOB_QUERIES if q not in used_queries]
     
-    if not available_queries:
-        next_query = random.choice(JOB_QUERIES)
-    else:
-        next_query = random.choice(available_queries)
-    
+    next_query = random.choice(available_queries) if available_queries else random.choice(JOB_QUERIES)
     used_queries.append(next_query)
     
     print(f"Selected job query: {next_query}")
@@ -147,7 +119,6 @@ def apply_easy_apply_filter(driver, actions):
     except Exception as e:
         print(f"Failed to apply filter: {str(e)}")
         return False
-
 
 def collect_job_links(driver, num_pages=3):
     links = []
@@ -258,16 +229,8 @@ def extract_job_details(driver, job_url):
                 salary = salary.replace("\u20b9", "₹").replace(" - ", "-").strip() if salary else "N/A"
             elif "On-site" in text or "Remote" in text or "Hybrid" in text:
                 job_type = text.split('\n')[0]
-                if job_type:
-                    job_type = job_type
-                else:
-                    job_type = "N/A"
             elif "Full-time" in text or "Part-time" in text or "Contract" in text or "Internship" or "Temporary" in text:
                 job_time = text.split('\n')[0]
-                if job_time:
-                    job_time = job_time
-                else:
-                    job_time = "N/A"
         
         company_url = driver.find_element(By.CSS_SELECTOR,
                                         'div.job-details-jobs-unified-top-card__company-name a').get_attribute('href')
@@ -351,59 +314,4 @@ def save_jobs_to_supabase(job_list):
         return True
     except Exception as e:
         print(f"Error saving to Supabase: {str(e)}")
-        return False
-
-def get_jobs():
-    driver, actions = setup_driver()
-    job_list = []
-    
-    try:
-        if not login_to_linkedin(driver, actions):
-            return []
-        
-        job_query = get_next_job_query()
-        if not search_for_jobs(driver, actions, query=job_query):
-            return []
-        
-        if not apply_easy_apply_filter(driver, actions):
-            return []
-        
-        links = collect_job_links(driver, num_pages=3)
-        print(f"Collected {len(links)} job links to process")
-        
-        for index, job_url in enumerate(links):
-            print(f"Processing job {index + 1}/{len(links)}: {job_url}")
-            job_details = extract_job_details(driver, job_url)
-            
-            if job_details:
-                job_list.append(job_details)
-                print(f"Successfully extracted details for job {index + 1}")
-            
-            time.sleep(2)
-        
-        save_jobs_to_file(job_list)
-        save_jobs_to_supabase(job_list)
-        
-        return job_list
-        
-    except Exception as e:
-        print(f"Error in job scraping process: {str(e)}")
-        return []
-    finally:
-        driver.quit()
-        print("WebDriver closed")
-        return job_list
-
-def run_scheduled_job():
-    print(f"Starting scheduled job at {time.strftime('%Y-%m-%d %H:%M:%S')}")
-    get_jobs()
-    print(f"Completed scheduled job at {time.strftime('%Y-%m-%d %H:%M:%S')}")
-
-if __name__ == "__main__":
-    run_scheduled_job()
-    
-    schedule.every(30).minutes.do(run_scheduled_job)
-    
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
+        return False 
