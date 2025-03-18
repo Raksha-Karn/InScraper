@@ -16,6 +16,9 @@ from selenium.webdriver.support import expected_conditions as EC
 from rotate_agents import rotate_user_agents
 from selenium.webdriver.common.action_chains import ActionChains
 from scraper import *
+import logging
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 WEBSITE = "https://np.linkedin.com"
 DRIVER_PATH = '/home/raksha/Downloads/chromedriver-linux64/chromedriver'
@@ -53,7 +56,7 @@ def login_to_linkedin(driver, actions):
         driver.set_page_load_timeout(30)
         driver.get(WEBSITE)
         time.sleep(2)
-        print("Loaded page successfully.")
+        logging.info("Loaded page successfully.")
 
         WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.XPATH, '//a[contains(text(), "Sign in with email")]'))
@@ -74,12 +77,12 @@ def login_to_linkedin(driver, actions):
         
         login_button = driver.find_element(By.CSS_SELECTOR, 'button[aria-label="Sign in"]')
         login_button.click()
-        print("Logged in successfully.")
+        logging.info("Logged in successfully.")
         
         time.sleep(5)
         return True
     except Exception as e:
-        print(f"Login failed: {str(e)}")
+        logging.error(f"Login failed: {str(e)}")
         return False
 
 def get_next_job_query():
@@ -97,7 +100,7 @@ def get_next_job_query():
     
     used_queries.append(next_query)
     
-    print(f"Selected job query: {next_query}")
+    logging.info(f"Selected job query: {next_query}")
     return next_query
 
 def search_for_jobs(driver, actions, query=None):
@@ -121,12 +124,12 @@ def search_for_jobs(driver, actions, query=None):
         search_input_element.click()
         search_input_element.send_keys(query)
         search_input_element.send_keys(Keys.RETURN)
-        print(f"Searching for '{query}'...")
+        logging.info(f"Searching for '{query}'...")
         
         time.sleep(5)
         return True
     except Exception as e:
-        print(f"Search failed: {str(e)}")
+        logging.error(f"Search failed: {str(e)}")
         return False
 
 def apply_easy_apply_filter(driver, actions):
@@ -140,12 +143,12 @@ def apply_easy_apply_filter(driver, actions):
         
         easy_apply_filter = driver.find_element(By.CSS_SELECTOR, 'a[href*="f_AL=true"]')
         easy_apply_filter.click()
-        print("Applied 'Easy Apply' filter.")
+        logging.info("Applied 'Easy Apply' filter.")
         
         time.sleep(5)
         return True
     except Exception as e:
-        print(f"Failed to apply filter: {str(e)}")
+        logging.error(f"Failed to apply filter: {str(e)}")
         return False
 
 
@@ -153,11 +156,11 @@ def collect_job_links(driver, num_pages=3):
     links = []
 
     try:
-        print("Collecting job links...")
+        logging.info("Collecting job links...")
         page = 1
 
         while page <= num_pages and len(links) < MAX_JOBS_TO_SCRAPE:
-            print(f"Processing page {page}...")
+            logging.info(f"Processing page {page}...")
 
             WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, 'ul.zslYMAghXImmwmPOfcwBWohNqjlUItimevY'))
@@ -183,40 +186,40 @@ def collect_job_links(driver, num_pages=3):
                     job_link = card.find_element(By.CSS_SELECTOR, 'a.job-card-container__link')
                     job_url = job_link.get_attribute('href')
                     if job_url and job_url not in links:
-                        print("Found new job link:", job_url)
+                        logging.info(f"Found new job link: {job_url}")
                         page_links.append(job_url)
                 except Exception as e:
-                    print(f"Error extracting job link: {str(e)}")
+                    logging.error(f"Error extracting job link: {str(e)}")
 
-            print(f"Found {len(page_links)} new jobs on page {page}")
+            logging.info(f"Found {len(page_links)} new jobs on page {page}")
             links.extend(page_links)
 
-            print("Checking if we have enough links...")
+            logging.info("Checking if we have enough links...")
             if len(links) >= MAX_JOBS_TO_SCRAPE:
                 return links[:MAX_JOBS_TO_SCRAPE]
 
-            print("Checking if we need to go to the next page...")
+            logging.info("Checking if we need to go to the next page...")
             if page < num_pages:
-                print("Going to the next page...")
+                logging.info("Going to the next page...")
                 try:
                     next_button = WebDriverWait(driver, 10).until(
                         EC.element_to_be_clickable((By.XPATH, f'//button[contains(@aria-label, "Page {page + 1}")]'))
                     )
                     driver.execute_script("arguments[0].scrollIntoView();", next_button)
                     next_button.click()
-                    print(f"Navigating to page {page + 1}")
+                    logging.info(f"Navigating to page {page + 1}")
                     time.sleep(3)
                     page += 1
                 except Exception as e:
-                    print(f"Error navigating to next page: {e}")
+                    logging.error(f"Error navigating to next page: {e}")
                     break
             else:
                 break
 
-        print(f"Collected a total of {len(links)} job links")
+        logging.info(f"Collected a total of {len(links)} job links")
         return links[:MAX_JOBS_TO_SCRAPE]
     except Exception as e:
-        print(f"Error collecting job links: {str(e)}")
+        logging.error(f"Error collecting job links: {str(e)}")
         return links[:MAX_JOBS_TO_SCRAPE]
 
 def extract_job_details(driver, job_url):
@@ -279,6 +282,7 @@ def extract_job_details(driver, job_url):
         if not company_logo_url:
             company_logo_url = None
         
+        logging.info(f"Extracted details for job: {job_title}")
         return {
             "title": job_title,
             "description": desc,
@@ -293,34 +297,34 @@ def extract_job_details(driver, job_url):
             "company_logo_url": company_logo_url
         }
     except Exception as e:
-        print(f"Error extracting job details: {str(e)}")
+        logging.error(f"Error extracting job details: {str(e)}")
         return None
 
 def save_jobs_to_file(job_list, filename='jobs.json'):
     try:
         with open(filename, 'w') as f:
             json.dump(job_list, f, indent=4)
-        print(f"Saved job list to {filename}")
+        logging.info(f"Saved job list to {filename}")
         return True
     except Exception as e:
-        print(f"Error saving jobs to file: {str(e)}")
+        logging.error(f"Error saving jobs to file: {str(e)}")
         return False
 
 def save_jobs_to_supabase(job_list):
     try:
         if not job_list:
-            print("No jobs to save to Supabase")
+            logging.warning("No jobs to save to Supabase")
             return False
         
         response = supabase.table("raw_jobs_data").select("id", count="exact").execute()
         current_count = response.count if hasattr(response, 'count') else 0
         
-        print(f"Current jobs in database: {current_count}")
+        logging.info(f"Current jobs in database: {current_count}")
         
         available_slots = MAX_TOTAL_JOBS - current_count
         
         if available_slots <= 0:
-            print(f"Database at capacity ({current_count}/{MAX_TOTAL_JOBS}). Removing oldest jobs.")
+            logging.warning(f"Database at capacity ({current_count}/{MAX_TOTAL_JOBS}). Removing oldest jobs.")
             
             to_delete = current_count - MAX_TOTAL_JOBS + len(job_list)
             if to_delete > 0:
@@ -330,7 +334,7 @@ def save_jobs_to_supabase(job_list):
                     ids_to_delete = [job['id'] for job in oldest_jobs.data]
                     
                     supabase.table("raw_jobs_data").delete().in_("id", ids_to_delete).execute()
-                    print(f"Deleted {len(ids_to_delete)} oldest jobs")
+                    logging.info(f"Deleted {len(ids_to_delete)} oldest jobs")
         
         jobs_to_insert = job_list[:available_slots] if available_slots < len(job_list) else job_list
         if jobs_to_insert:
@@ -344,13 +348,13 @@ def save_jobs_to_supabase(job_list):
             
             if new_jobs:
                 response = supabase.table("raw_jobs_data").insert(new_jobs).execute()
-                print(f"Saved {len(new_jobs)} new jobs to Supabase")
+                logging.info(f"Saved {len(new_jobs)} new jobs to Supabase")
             else:
-                print("All jobs already exist in the database")
+                logging.info("All jobs already exist in the database")
         
         return True
     except Exception as e:
-        print(f"Error saving to Supabase: {str(e)}")
+        logging.error(f"Error saving to Supabase: {str(e)}")
         return False
 
 def get_jobs():
@@ -369,15 +373,15 @@ def get_jobs():
             return []
         
         links = collect_job_links(driver, num_pages=3)
-        print(f"Collected {len(links)} job links to process")
+        logging.info(f"Collected {len(links)} job links to process")
         
         for index, job_url in enumerate(links):
-            print(f"Processing job {index + 1}/{len(links)}: {job_url}")
+            logging.info(f"Processing job {index + 1}/{len(links)}: {job_url}")
             job_details = extract_job_details(driver, job_url)
             
             if job_details:
                 job_list.append(job_details)
-                print(f"Successfully extracted details for job {index + 1}")
+                logging.info(f"Successfully extracted details for job {index + 1}")
             
             time.sleep(2)
         
@@ -387,17 +391,17 @@ def get_jobs():
         return job_list
         
     except Exception as e:
-        print(f"Error in job scraping process: {str(e)}")
+        logging.error(f"Error in job scraping process: {str(e)}")
         return []
     finally:
         driver.quit()
-        print("WebDriver closed")
+        logging.info("WebDriver closed")
         return job_list
 
 def run_scheduled_job():
-    print(f"Starting scheduled job at {time.strftime('%Y-%m-%d %H:%M:%S')}")
+    logging.info(f"Starting scheduled job at {time.strftime('%Y-%m-%d %H:%M:%S')}")
     get_jobs()
-    print(f"Completed scheduled job at {time.strftime('%Y-%m-%d %H:%M:%S')}")
+    logging.info(f"Completed scheduled job at {time.strftime('%Y-%m-%d %H:%M:%S')}")
 
 if __name__ == "__main__":
     run_scheduled_job()
